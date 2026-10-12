@@ -1,0 +1,32 @@
+{
+  "name": "su-kukan",
+  "version": "1.0.0",
+  "description": "数宇宙 SU-KUKAN: 3D animation atlas of the Japanese high-school mathematics curriculum (Math I / A / II / B / III / C)",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4173",
+    "lint:text": "node scripts/lint-text.mjs",
+    "audit": "node scripts/audit.mjs",
+    "builders": "node scripts/preview-builders.mjs",
+    "shot": "node scripts/shoot.mjs",
+    "check": "npm run lint:text && npm run build && npm run audit && npm run sweep",
+    "sweep": "node scripts/sweep.mjs",
+    "steps": "node scripts/steps.mjs",
+    "build:single": "node scripts/build-single.mjs"
+  },
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "katex": "^0.16.11",
+    "three": "^0.169.0"
+  },
+  "devDependencies": {
+    "pdf-parse": "^1.1.1",
+    "playwright": "^1.48.2",
+    "vite": "^5.4.10"
+  },
+  "private": true
+}

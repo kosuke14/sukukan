@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>数宇宙 SU-KŪKAN ｜ 高校数学3Dアニメーション図鑑</title>
+<meta name="description" content="数学I・A・II・B・III・C 全82単元を3Dアニメーションで体験する学習教材" />
+</head>
+<body>
+  <canvas id="stage"></canvas>
+
+  <!-- 起動画面 -->
+  <div id="boot">
+    <div class="boot-inner">
+      <div class="boot-mark">数宇宙</div>
+      <div class="boot-sub">SU-KŪKAN</div>
+      <div class="boot-desc">高等学校学習指導要領（平成30年告示 新課程）全82単元</div>
+      <div class="boot-bar"><i></i></div>
+      <div class="boot-note" id="boot-note">星図を生成しています…</div>
+    </div>
+  </div>
+
+  <!-- 上部バー -->
+  <header id="topbar" class="hidden">
+    <button id="btn-map" class="tb-btn" title="星図に戻る (Esc)">✦ 星図</button>
+    <div class="tb-crumbs">
+      <span id="crumb-subject"></span>
+      <span class="sep">/</span>
+      <span id="crumb-chapter"></span>
+      <span class="sep">/</span>
+      <strong id="crumb-unit"></strong>
+    </div>
+    <div class="tb-spacer"></div>
+    <button id="btn-voice" class="tb-btn" title="読み上げ (V)">読み上げ</button>
+    <button id="btn-detail" class="tb-btn" title="詳細テキストを開く (D)">詳細</button>
+    <button id="btn-speed" class="tb-btn" title="再生速度">1.0×</button>
+    <button id="btn-quality" class="tb-btn" title="描画品質">高</button>
+    <button id="btn-help" class="tb-btn" title="操作方法">?</button>
+  </header>
+
+  <!--
+    字幕。説明は「演出の一部」としてステップと同期して出入りし、
+    読み終えたら下に溶ける。画面を覆わない。
+  -->
+  <div id="caption" class="hidden" aria-live="polite">
+    <div class="cap-scrim"></div>
+    <div class="cap-inner">
+      <div class="cap-head">
+        <span class="cap-title" id="cap-title"></span>
+        <span class="cap-step"><span id="cap-stepno">1</span><i>/</i><span id="cap-stepmax">1</span></span>
+      </div>
+      <div class="p-math" id="cap-math"></div>
+      <p class="p-text" id="cap-text"></p>
+    </div>
+  </div>
+
+  <!-- 操作バー。触れると復帰する -->
+  <div id="transport" class="hidden">
+    <button id="btn-prev" class="tp-btn" title="前のステップ (←)">◀</button>
+    <div class="p-track" id="p-track"><i id="p-fill"></i><u id="p-head-dot"></u></div>
+    <button id="btn-play" class="tp-btn primary" title="再生/一時停止 (Space)">❚❚</button>
+    <button id="btn-next" class="tp-btn" title="次のステップ (→)">▶</button>
+    <span class="tp-sep"></span>
+    <button id="btn-caption" class="tp-btn wide" title="字幕をもう一度 (C)">字幕</button>
+    <button id="btn-prev-unit" class="tp-btn" title="前の単元">‹単元</button>
+    <button id="btn-next-unit" class="tp-btn" title="次の単元">単元›</button>
+  </div>
+
+  <!-- 詳細テキスト（必要なときだけ開く） -->
+  <aside id="panel" class="hidden">
+    <div class="p-head">
+      <div class="p-kicker" id="p-kicker"></div>
+      <h1 class="p-title" id="p-title"></h1>
+      <p class="p-summary" id="p-summary"></p>
+    </div>
+    <div class="p-body">
+      <div class="p-math" id="p-math"></div>
+      <p class="p-text" id="p-text"></p>
+      <button id="btn-detail-close" class="p-btn">閉じる</button>
+    </div>
+  </aside>
+
+  <!-- パラメータ -->
+  <div id="params" class="hidden"></div>
+
+  <!-- 星図オーバーレイUI -->
+  <div id="map-ui" class="hidden">
+    <div class="map-title">
+      <h2>星図</h2>
+      <p>科目は世界を6つの星雲に分けている。単元は星。光ればそこで学ぶ。</p>
+    </div>
+    <div class="map-side" id="map-side"></div>
+    <button id="map-close" class="tb-btn floating">閉じる</button>
+  </div>
+
+  <div id="help" class="hidden">
+    <div class="help-card">
+      <h3>操作方法</h3>
+      <ul>
+        <li><b>Space</b> 再生 / 一時停止</li>
+        <li><b>← →</b> 前 / 次のステップ</li>
+        <li><b>C</b> 字幕をもう一度表示</li>
+        <li><b>V</b> 読み上げのオン / オフ</li>
+        <li><b>D</b> 詳細テキストを開閉</li>
+        <li><b>Esc</b> 星図へ戻る</li>
+        <li><b>R</b> ステップ最初から再生</li>
+        <li><b>ドラッグ</b> カメラを回す</li>
+        <li><b>ホイール</b> ズーム</li>
+      </ul>
+      <p class="help-note">説明はステップの演出として表示されます。読むには画面下部に触れてください。
+        読み上げは端末の日本語音声を使います。数式は「a の x 乗」のように読みます。</p>
+      <button class="p-btn primary" id="help-close">閉じる</button>
+    </div>
+  </div>
+
+  <div id="nowebgl" class="hidden">
+    <div class="help-card">
+      <h3>WebGLを利用できません</h3>
+      <p>ブラウザのハードウェアアクセラレーションを有効にして再読み込みしてください。</p>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

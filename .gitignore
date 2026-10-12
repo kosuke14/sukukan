@@ -1,0 +1,6 @@
+node_modules/
+dist/
+shots/
+.mimocode/
+*.log
+.DS_Store
