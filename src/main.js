@@ -125,6 +125,9 @@ function boot() {
       case 'c': case 'C': ui.flashCaption(); break;
       case 'v': case 'V': ui.toggleVoice(); break;
       case 'd': case 'D': ui.toggleDetail(); break;
+      case '+': case '=': app.rig.zoomBy(-0.25); break;
+      case '-': case '_': app.rig.zoomBy(0.25); break;
+      case '0': app.rig.resetZoom(); break;
       case '?': document.getElementById('help').classList.remove('hidden'); break;
       default: break;
     }

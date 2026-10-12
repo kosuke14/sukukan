@@ -38,6 +38,13 @@
     <button id="btn-help" class="tb-btn" title="操作方法">?</button>
   </header>
 
+  <!-- ズーム操作（左端中央） -->
+  <div id="zoomctl" class="hidden" role="group" aria-label="ズーム">
+    <button id="zoom-in" class="zc-btn" title="拡大 (+)" aria-label="拡大">＋</button>
+    <button id="zoom-val" class="zc-btn zc-val" title="倍率をリセット (0)" aria-label="倍率をリセット">100%</button>
+    <button id="zoom-out" class="zc-btn" title="縮小 (−)" aria-label="縮小">－</button>
+  </div>
+
   <!--
     字幕。説明は「演出の一部」としてステップと同期して出入りし、
     読み終えたら下に溶ける。画面を覆わない。
@@ -106,6 +113,9 @@
         <li><b>R</b> ステップ最初から再生</li>
         <li><b>ドラッグ</b> カメラを回す</li>
         <li><b>ホイール</b> ズーム</li>
+        <li><b>ピンチ</b> ズーム（タッチ画面）</li>
+        <li><b>+ / −</b> 拡大 / 縮小</li>
+        <li><b>0</b> ズームをリセット</li>
       </ul>
       <p class="help-note">説明はステップの演出として表示されます。読むには画面下部に触れてください。
         読み上げは端末の日本語音声を使います。数式は「a の x 乗」のように読みます。</p>

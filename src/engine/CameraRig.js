@@ -5,6 +5,10 @@ const _v = new THREE.Vector3();
 const _sph = new THREE.Spherical();
 const _off = new THREE.Vector3();
 
+/** userZoom is a log-scale distance: radius *= exp(zoom). 0 = scripted framing. */
+export const ZOOM_MIN = -1.9;   // ~0.15x  (寄る)
+export const ZOOM_MAX = 1.1;    // ~3.0x   (引く)
+
 /**
  * Scripted camera with a user orbit offset layered on top.
  *
@@ -25,7 +29,8 @@ export class CameraRig {
     this.lambda = 2.2;
     this.userAz = 0;
     this.userPo = 0;
-    this.userZoom = 0;
+    this.userZoom = 0;      // target (log scale)
+    this.curZoom = 0;       // eased value actually applied
     this.enabled = true;
     this.dragging = false;
     this.autoDrift = 0;
@@ -35,40 +40,91 @@ export class CameraRig {
 
   _bind() {
     const el = this.dom;
-    let px = 0, py = 0;
+    const pts = new Map(); // pointerId -> {x, y}
+    let pinchDist = 0;
+    const dist = () => {
+      const [a, b] = [...pts.values()];
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    };
+
     const onDown = (e) => {
       if (!this.enabled) return;
-      this.dragging = true;
-      px = e.clientX ?? e.touches[0].clientX;
-      py = e.clientY ?? e.touches[0].clientY;
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      try { el.setPointerCapture?.(e.pointerId); } catch { /* ignore */ }
+      if (pts.size === 2) {
+        // second finger: switch from orbit to pinch
+        this.dragging = false;
+        pinchDist = dist();
+      } else if (pts.size === 1) {
+        this.dragging = true;
+      }
       el.style.cursor = 'grabbing';
     };
     const onMove = (e) => {
-      if (!this.dragging) return;
-      const x = e.clientX ?? e.touches[0].clientX;
-      const y = e.clientY ?? e.touches[0].clientY;
-      this.userAz -= (x - px) * 0.0055;
-      this.userPo = clamp(this.userPo - (y - py) * 0.0045, -1.1, 1.1);
-      px = x; py = y;
+      const p = pts.get(e.pointerId);
+      if (!p) return;
+      const dx = e.clientX - p.x;
+      const dy = e.clientY - p.y;
+      p.x = e.clientX; p.y = e.clientY;
+      if (pts.size >= 2) {
+        const d = dist();
+        if (pinchDist > 0 && d > 0) this.zoomBy(-Math.log(d / pinchDist));
+        pinchDist = d;
+      } else if (this.dragging) {
+        this.userAz -= dx * 0.0055;
+        this.userPo = clamp(this.userPo - dy * 0.0045, -1.1, 1.1);
+      }
     };
-    const onUp = () => { this.dragging = false; el.style.cursor = ''; };
+    const onUp = (e) => {
+      pts.delete(e.pointerId);
+      try { el.releasePointerCapture?.(e.pointerId); } catch { /* ignore */ }
+      if (pts.size === 1) {
+        // pinch ended with one finger still down: resume orbit without a jump
+        this.dragging = true;
+      } else if (pts.size === 0) {
+        this.dragging = false;
+        el.style.cursor = '';
+      }
+      pinchDist = 0;
+    };
     const onWheel = (e) => {
       if (!this.enabled) return;
       e.preventDefault();
-      this.userZoom = clamp(this.userZoom + Math.sign(e.deltaY) * 0.09, -0.72, 3.2);
+      // Trackpad pinch arrives as ctrl+wheel with small fractional deltas; mouse
+      // wheels send large notched deltas. Normalise both to a log-zoom step.
+      const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1;
+      const dy = e.deltaY * unit;
+      const step = e.ctrlKey ? dy * 0.012 : Math.sign(dy) * Math.min(Math.abs(dy) / 100, 3) * 0.12;
+      this.zoomBy(step);
     };
     el.addEventListener('pointerdown', onDown);
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
     el.addEventListener('wheel', onWheel, { passive: false });
     el.style.cursor = 'grab';
+    el.style.touchAction = 'none'; // let us own drag + pinch on touch screens
     this._teardown = () => {
       el.removeEventListener('pointerdown', onDown);
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
       el.removeEventListener('wheel', onWheel);
     };
   }
+
+  /** Zoom by a log-scale amount. Positive = pull back, negative = move in. */
+  zoomBy(d) {
+    this.userZoom = clamp(this.userZoom + d, ZOOM_MIN, ZOOM_MAX);
+  }
+
+  /** Back to the scripted framing (distance only; orbit angle is kept). */
+  resetZoom() {
+    this.userZoom = 0;
+  }
+
+  /** Current magnification relative to the scripted framing (1 = as scripted). */
+  get zoomFactor() { return Math.exp(-this.curZoom); }
 
   set(pose, { immediate = false, lambda } = {}) {
     if (!pose) return;
@@ -87,6 +143,7 @@ export class CameraRig {
     this.userAz = 0;
     this.userPo = 0;
     this.userZoom = 0;
+    this.curZoom = 0;
   }
 
   /** Box that comfortably frames a bounding sphere at the current viewing distance. */
@@ -108,12 +165,13 @@ export class CameraRig {
     dampVec3(this.curLook, this.baseLook, this.lambda, dt);
 
     if (this.autoDrift) this.userAz += dt * this.autoDrift;
+    this.curZoom = damp(this.curZoom, this.userZoom, 12, dt);
 
     const off = _off.copy(this.curPos).sub(this.curLook);
     _sph.setFromVector3(off);
     _sph.theta += this.userAz;
     _sph.phi = clamp(_sph.phi + this.userPo, 0.08, Math.PI - 0.08);
-    _sph.radius = Math.max(_sph.radius * (1 + this.userZoom * 0.22), 0.4);
+    _sph.radius = Math.max(_sph.radius * Math.exp(this.curZoom), 0.4);
     _sph.makeSafe();
     off.setFromSpherical(_sph);
 

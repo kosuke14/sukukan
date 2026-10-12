@@ -32,7 +32,7 @@ export class Ui {
 
     this.el = {
       boot: $('boot'), bootNote: $('boot-note'),
-      topbar: $('topbar'), panel: $('panel'), params: $('params'),
+      topbar: $('topbar'), panel: $('panel'), params: $('params'), zoomctl: $('zoomctl'),
       caption: $('caption'), transport: $('transport'),
       mapUi: $('map-ui'), mapSide: $('map-side'), help: $('help'),
       crumbSubject: $('crumb-subject'), crumbChapter: $('crumb-chapter'), crumbUnit: $('crumb-unit'),
@@ -45,6 +45,9 @@ export class Ui {
     };
 
     $('btn-map').onclick = () => this.onMap?.();
+    $('zoom-in').onclick = () => this.app.rig.zoomBy(-0.25);
+    $('zoom-out').onclick = () => this.app.rig.zoomBy(0.25);
+    $('zoom-val').onclick = () => this.app.rig.resetZoom();
     $('map-close').onclick = () => this.onMap?.();
     $('btn-prev').onclick = () => onStep?.(-1);
     $('btn-next').onclick = () => onStep?.(1);
@@ -161,10 +164,21 @@ export class Ui {
    * so it waits for the step's own progress too.
    */
   tick(storyElapsed, stepDuration) {
+    this._updateZoomReadout();
     if (!this.el.caption.classList.contains('show') || this.captionSticky) return;
     const wall = performance.now() - (this.captionStepStart ?? 0);
     const storyCap = Math.min(CAPTION_HOLD, (stepDuration ?? 8) * 0.78) * 1000;
     if (wall >= CAPTION_HOLD && storyElapsed * 1000 >= storyCap) this.showCaption(false);
+  }
+
+  /** Show the current magnification next to the zoom buttons (tap it to reset). */
+  _updateZoomReadout() {
+    const pct = Math.round(this.app.rig.zoomFactor * 100);
+    if (pct === this._zoomPct) return;
+    this._zoomPct = pct;
+    const v = $('zoom-val');
+    v.textContent = `${pct}%`;
+    v.classList.toggle('zoomed', Math.abs(this.app.rig.userZoom) > 0.02);
   }
 
   /** Re-show the current caption on demand (C key, tapping, scrubbing). */
@@ -197,6 +211,7 @@ export class Ui {
     this.lesson = lesson;
     const meta = SUBJECTS[lesson.subject];
     this.el.topbar.classList.remove('hidden');
+    this.el.zoomctl.classList.remove('hidden');
     this.el.panel.classList.add('hidden');
     this.detailOpen = false;
     this.el.btnDetail.classList.remove('on');
@@ -316,6 +331,7 @@ export class Ui {
   showMap(groups) {
     this.allBySubject = groups;
     this.el.topbar.classList.add('hidden');
+    this.el.zoomctl.classList.add('hidden');
     this.el.caption.classList.add('hidden');
     this.el.transport.classList.add('hidden');
     this.el.panel.classList.add('hidden');
