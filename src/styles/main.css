@@ -25,9 +25,25 @@ html, body {
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+
+  /* --- タッチ端末向け：アプリとして使うためのジェスチャー抑止 --- */
+  touch-action: manipulation;            /* ダブルタップ拡大と300ms遅延を無効化 */
+  overscroll-behavior: none;             /* 引っ張って更新・バウンスを無効化 */
+  -webkit-text-size-adjust: 100%;        /* 横向き時の文字サイズ自動調整を無効化 */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;           /* 長押しメニュー（iOS）を無効化 */
+  -webkit-user-select: none;
+  user-select: none;
 }
 
-#stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+/* 読み物・入力欄は選択・コピーできるように戻す */
+.p-body, .p-body *, input, textarea { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+
+#stage {
+  position: fixed; inset: 0; width: 100%; height: 100%; display: block;
+  touch-action: none;                    /* ドラッグ・ピンチはすべてアプリ側で処理 */
+  -webkit-user-drag: none; outline: none;
+}
 
 .hidden { display: none !important; }
 

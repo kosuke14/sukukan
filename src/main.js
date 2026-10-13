@@ -6,8 +6,10 @@ import { createStarMap } from './ui/StarMap.js';
 import { LESSONS, lessonsBySubject, SUBJECTS } from './content/index.js';
 import { SUBJECT_COLORS } from './engine/Materials.js';
 import * as builderRegistry from './visuals/index.js';
+import { installTouchGuard } from './ui/touchGuard.js';
 
 const canvas = document.getElementById('stage');
+installTouchGuard(canvas);
 
 function hasWebGL2() {
   try {
