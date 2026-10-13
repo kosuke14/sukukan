@@ -119,12 +119,22 @@ export class App {
 
   _bindPointer() {
     let downAt = null;
-    this.canvas.addEventListener('pointerdown', (e) => { downAt = { x: e.clientX, y: e.clientY }; });
+    let active = 0;      // 押されている指の数
+    let multi = false;   // 今回のタッチ中に2本以上触れたか（ピンチ操作ならピックしない）
+    this.canvas.addEventListener('pointerdown', (e) => {
+      active++;
+      if (active > 1) multi = true;
+      downAt = { x: e.clientX, y: e.clientY };
+    });
+    const release = () => { active = Math.max(0, active - 1); if (!active) multi = false; };
+    this.canvas.addEventListener('pointercancel', release);
     this.canvas.addEventListener('pointerup', (e) => {
+      const wasMulti = multi;
+      release();
       if (!downAt) return;
       const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y);
       downAt = null;
-      if (moved > 6) return; // that was a camera drag, not a click
+      if (wasMulti || moved > 6) return; // camera drag / pinch, not a click
       this.pointer.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
       this.raycaster.setFromCamera(this.pointer, this.stage.camera);
       const hits = this.raycaster.intersectObjects(this.stage.world.children, true);
